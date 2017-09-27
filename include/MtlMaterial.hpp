@@ -16,7 +16,8 @@ struct MtlColor {
 class MtlMaterial {
 public:
   MtlMaterial(const std::string& matName = std::string());
-  void printProperties(int tableLevel = 0, bool isLast = false);
+  void printProperties(const std::string& prefix = std::string(),
+      bool isLast = false);
 
   std::string name; // newmtl (string)
   MtlColor ambientColor, diffuseColor, specularColor; // Ka, Kd, Ks (3 * [0 - 255])

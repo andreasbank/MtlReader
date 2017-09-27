@@ -10,14 +10,7 @@ MtlMap::MtlMap(const string& mapName) : name(mapName)
 {}
 
 void
-MtlMap::printProperties(int tableLevel, bool isLast)
+MtlMap::printProperties(const string& prefix, bool isLast)
 {
-  string spaces;
-
-  for (int i = 0; i < tableLevel; ++i) {
-    spaces += " ";
-  }
-
-  cout << spaces << (isLast ? "└─" : "├─") << "Map name: " << name << endl;
-  spaces += (isLast ? " " : "│") + string(" ├─");
+  cout << prefix << (isLast ? " └─" : " ├─") << "Map name: " << name << endl;
 }

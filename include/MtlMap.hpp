@@ -13,7 +13,8 @@ enum MtlOptionImfChan { r, g, b, m, l, z };
 class MtlMap {
 public:
   MtlMap(const std::string& mapName = std::string());
-  void printProperties(int tableLevel = 0, bool isLast = false);
+  void printProperties(const std::string& prefix = std::string(),
+      bool isLast = false);
 
   /**
    * Map name

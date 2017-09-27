@@ -21,7 +21,7 @@ DOXYGEN_DIRS   = $(BASE_DIR)/html $(BASE_DIR)/latex
 
 INCLUDES       = -I$(INCL_DIR)
 
-CFLAGS        += -O3 -Wall -g $(INCLUDES)
+CFLAGS        += --std=c++11 -O3 -Wall -g $(INCLUDES)
 LDFLAGS       +=
 LIBS          +=
 

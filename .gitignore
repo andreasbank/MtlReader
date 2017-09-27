@@ -34,3 +34,6 @@ libmtlreader.so
 *.exe
 *.out
 *.app
+
+# VI stuff
+*.swp

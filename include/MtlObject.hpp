@@ -5,8 +5,8 @@
 #ifndef MTLOBJECT_HPP
 #define MTLOBJECT_HPP
 
-#include <list>
 #include <string>
+#include <vector>
 
 #include "MtlMap.hpp"
 #include "MtlMaterial.hpp"
@@ -16,6 +16,7 @@ public:
   MtlObject(const std::string& fileName);
   ~MtlObject(void);
   void skipOptionalChars(const std::string& data, std::string::size_type& pos);
+  float parseNextFloat(const std::string& data, std::string::size_type& pos);
   void parseMtlColorAndIllumination(const std::string& data,
       std::string::size_type& pos, MtlMaterial& mat);
   void parseMtlTextureAndReflectionMaps(const std::string& data,
@@ -24,7 +25,7 @@ public:
   void printMaterials(void);
 
   std::string mFileName;
-  std::list<MtlMaterial *> materials;
+  std::vector<MtlMaterial *> materials;
 };
 
 

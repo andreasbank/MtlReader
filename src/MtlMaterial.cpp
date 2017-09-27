@@ -28,33 +28,28 @@ MtlMaterial::MtlMaterial(const std::string& matName) :
 }
 
 void
-MtlMaterial::printProperties(int tableLevel, bool isLast)
+MtlMaterial::printProperties(const string& prefix, bool isLast)
 {
-  string spaces;
+  string localPrefix(string((isLast ? " " : "│")) + " ├─");
 
-  for (int i = 0; i < tableLevel; ++i) {
-    spaces += " ";
-  }
-
-  cout << spaces << (isLast ? "└─" : "├─") << "Material name: " << name << endl;
-  spaces += (isLast ? " " : "│") + string(" ├─");
-  cout << spaces << "ambientColor (Ka): " << ambientColor.red << ", " <<
+  cout << prefix << (isLast ? "└─" : "├─") << "Material name: " << name << endl;
+  cout << prefix << localPrefix << "ambientColor (Ka): " << ambientColor.red << ", " <<
       ambientColor.green << ", " << ambientColor.blue << endl;
-  cout << spaces << "diffuseColor (Kd): " << diffuseColor.red << ", " <<
+  cout << prefix << localPrefix << "diffuseColor (Kd): " << diffuseColor.red << ", " <<
       diffuseColor.green << ", " << diffuseColor.blue << endl;
-  cout << spaces << "specularColor (Ks): " << specularColor.red << ", " <<
+  cout << prefix << localPrefix << "specularColor (Ks): " << specularColor.red << ", " <<
       specularColor.green << ", " << specularColor.blue << endl;
-  cout << spaces << "illumination (illum): " << illumination << endl;
-  cout << spaces << "dissolve (d): " << dissolve << endl;
-  cout << spaces << "specularExponent (Ns): " << specularExponent << endl;
-  cout << spaces << "sharpness (sharpness): " << sharpness << endl;
-  cout << spaces << "opticalDensity (Ni): " << opticalDensity << endl;
-  mapAmbientColor.printProperties(tableLevel + 2);
-  mapDiffuseColor.printProperties(tableLevel + 2);
-  mapSpecularColor.printProperties(tableLevel + 2);
-  mapSpecularExponent.printProperties(tableLevel + 2);
-  cout << spaces << "mapAntiAliasingTextures (map_aat): " <<
+  cout << prefix << localPrefix << "illumination (illum): " << illumination << endl;
+  cout << prefix << localPrefix << "dissolve (d): " << dissolve << endl;
+  cout << prefix << localPrefix << "specularExponent (Ns): " << specularExponent << endl;
+  cout << prefix << localPrefix << "sharpness (sharpness): " << sharpness << endl;
+  cout << prefix << localPrefix << "opticalDensity (Ni): " << opticalDensity << endl;
+  mapAmbientColor.printProperties(prefix + (isLast ? " " : "│"));
+  mapDiffuseColor.printProperties(prefix + (isLast ? " " : "│"));
+  mapSpecularColor.printProperties(prefix + (isLast ? " " : "│"));
+  mapSpecularExponent.printProperties(prefix + (isLast ? " " : "│"));
+  cout << prefix << localPrefix << "mapAntiAliasingTextures (map_aat): " <<
       mapAntiAliasingTextures << endl;
-  decal.printProperties(tableLevel + 2);
-  disposition.printProperties(tableLevel + 2, true);
+  decal.printProperties(prefix + (isLast ? " " : "│"));
+  disposition.printProperties(prefix + (isLast ? " " : "│"), true);
 }
