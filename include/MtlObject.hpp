@@ -16,7 +16,11 @@ public:
   MtlObject(const std::string& fileName);
   ~MtlObject(void);
   void skipOptionalChars(const std::string& data, std::string::size_type& pos);
-  float parseNextFloat(const std::string& data, std::string::size_type& pos);
+  void skipToNextLine(const std::string& data, std::string::size_type& pos);
+  void parseParam3Floats(const std::string& data, std::string::size_type& pos,
+      const std::string& param, float value[]);
+  void parseParamInt(const std::string& data, std::string::size_type& pos,
+    const std::string& param, int& value);
   void parseMtlColorAndIllumination(const std::string& data,
       std::string::size_type& pos, MtlMaterial& mat);
   void parseMtlTextureAndReflectionMaps(const std::string& data,

@@ -9,10 +9,10 @@
 using namespace std;
 
 MtlMaterial::MtlMaterial(const std::string& matName) :
-    name(matName),
-    illumination(0), dissolve(0.0f), specularExponent(0), sharpness(0.0f),
-    opticalDensity(0.0f), mapAmbientColor("ambient"),
-    mapDiffuseColor("diffuse"), mapSpecularColor("specular color"),
+    parent(nullptr), name(matName), illumination(0), dissolve(0.0f),
+    specularExponent(0), sharpness(0.0f), opticalDensity(0.0f),
+    mapAmbientColor("ambient"), mapDiffuseColor("diffuse"),
+    mapSpecularColor("specular color"),
     mapSpecularExponent("specular exponent"), mapAntiAliasingTextures(false),
     decal("decal"), disposition("disposition")
 {

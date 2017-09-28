@@ -6,11 +6,11 @@
 # 
 
 newmtl plane
-Ka 0.117647 0.117647 0.117647
-Kd 1 1 1
-Ks 0.752941 0.752941 0.752941
-illum 2
-Ns 8
+Ka 0.117647 0.127647 0.1317647
+Kd 11 12 13
+Ks 0.711941 0.712941 0.713941
+illum 1
+Ns 5
 map_Kd XA-20_Razorback_Strike_Fighter_P01.png
 map_bump XA-20_Razorback_Strike_Fighter_N.png
 bump XA-20_Razorback_Strike_Fighter_N.png
@@ -22,11 +22,11 @@ map_kA
 map_Ns 
 
 newmtl glass
-Ka 0.117647 0.117647 0.117647
-Kd 1 1 1
-Ks 0.752941 0.752941 0.752941
+Ka 0.217647 0.227647 0.237647
+Kd 21 22 23
+Ks 0.721941 0.722941 0.723941
 illum 2
-Ns 8
+Ns 6
 map_Kd Glass_Cockpit.png
 map_bump 
 bump 
@@ -38,11 +38,11 @@ map_kA
 map_Ns 
 
 newmtl seat
-Ka 0.117647 0.117647 0.117647
-Kd 1 1 1
-Ks 0.752941 0.752941 0.752941
-illum 2
-Ns 8
+Ka 0.317647 0.327647 0.337647
+Kd 31 32 33
+Ks 0.731941 0.732941 0.733941
+illum 3
+Ns 7
 map_Kd Eject_Seat.png
 map_bump 
 bump 
@@ -54,10 +54,10 @@ map_kA
 map_Ns 
 
 newmtl pilot
-Ka 0.117647 0.117647 0.117647
-Kd 1 1 1
-Ks 0.752941 0.752941 0.752941
-illum 2
+Ka 0.417647 0.427647 0.437647
+Kd 41 42 43
+Ks 0.741941 0.742941 0.743941
+illum 4
 Ns 8
 map_Kd Pilot_usa.png
 map_bump 

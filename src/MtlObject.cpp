@@ -46,22 +46,68 @@ MtlObject::skipOptionalChars(const string& data, string::size_type& pos)
   while ((data[pos] == '\'') || (data[pos] == ' ') || (data[pos] == '"'))
     ++pos;
 }
-
-float
-MtlObject::parseNextFloat(const string& data, string::size_type& pos)
+void
+MtlObject::skipToNextLine(const string& data, string::size_type& pos)
 {
-  float f = 0.0f;
-  string::size_type localPos = pos;
-  skipOptionalChars(data, localPos);
-  if ((localPos = data.find("Ka", localPos)) != string::npos) {
-    cout << "Found Ka" << endl;
-    localPos += 2;
-    string::size_type endPos = data.find(" ", localPos);
-    string floatString = data.substr(localPos, endPos);
-    f = stof(floatString);
-  }
+  string::size_type localPos = data.find_first_of("\n", pos);
 
-  return f;
+  if (localPos != string::npos) {
+    ++localPos;
+    pos = localPos;
+  }
+}
+
+void
+MtlObject::parseParam3Floats(const string& data, string::size_type& pos,
+    const string& param, float value[])
+{
+  string::size_type localPos = pos;
+  string::size_type lineEnd = data.find_first_of("\n", localPos);
+  skipOptionalChars(data, localPos);
+  if (((localPos = data.find(param, localPos)) != string::npos) &&
+      (localPos < lineEnd)) {
+    localPos += param.length();
+    /* Extract first float */
+    skipOptionalChars(data, localPos);
+    string::size_type endPos = data.find(" ", localPos);
+    string floatString = data.substr(localPos, endPos - localPos);
+    value[0] = stof(floatString);
+    localPos = endPos;
+    /* Extract second float */
+    skipOptionalChars(data, localPos);
+    skipOptionalChars(data, endPos);
+    endPos = data.find(" ", localPos);
+    floatString = data.substr(localPos, endPos - localPos);
+    value[1] = stof(floatString);
+    localPos = endPos;
+    /* Extract third float */
+    skipOptionalChars(data, localPos);
+    skipOptionalChars(data, endPos);
+    endPos = data.find(" ", localPos);
+    floatString = data.substr(localPos, endPos - localPos);
+    value[2] = stof(floatString);
+  } else {
+    value[0] = value[1] = value[2] = 0.0f;
+    throw MtlParseException();
+  }
+}
+
+void
+MtlObject::parseParamInt(const string& data, string::size_type& pos,
+    const string& param, int& value)
+{
+  string::size_type localPos = pos;
+  string::size_type lineEnd = data.find_first_of("\n", localPos);
+  skipOptionalChars(data, localPos);
+  if (((localPos = data.find(param, localPos)) != string::npos) &&
+      (localPos < lineEnd)) {
+    localPos += param.length();
+    skipOptionalChars(data, localPos);
+    value = stoi(data.substr(localPos, lineEnd - localPos));
+  } else {
+    value = 0;
+    throw MtlParseException();
+  }
 }
 
 void
@@ -83,16 +129,57 @@ MtlObject::parseMtlColorAndIllumination(const string& data,
   MtlMap decal; // decal (options filename)
   MtlMap disposition; //disp (options filename)
   */
-  // TODO: make sure we dont search beyond the first newmtl
-  pos = data.find("Ka");
-  if (pos != string::npos) {
-    float ka[3];
-    try {
-      ka[0] = parseNextFloat(data, pos);
-    } catch(MtlParseException& e) {
-      cerr << "Failed parsing Ka";
-      throw e;
-    }
+  float fval[3];
+  int ival[3];
+
+  try {
+    /* Parse ambient, diffuse and specular colors */
+    parseParam3Floats(data, pos, "Ka", fval);
+    mat.ambientColor = { fval[0], fval[1], fval[2] };
+    skipToNextLine(data, pos);
+    parseParam3Floats(data, pos, "Kd", fval);
+    mat.diffuseColor = { fval[0], fval[1], fval[2] };
+    skipToNextLine(data, pos);
+    parseParam3Floats(data, pos, "Ks", fval);
+    mat.specularColor = { fval[0], fval[1], fval[2] };
+    skipToNextLine(data, pos);
+  } catch(exception& e) {
+    cerr << "Failed parsing 'Ka', 'Kd' or 'Ks' values from material '" <<
+        mat.name << "' (Object '" << mFileName  << "')" << endl;
+    mat.specularColor = { 0.5f, 0.5f, 0.5f };
+  }
+
+  try {
+    /* Parse illumination */
+    parseParamInt(data, pos, "illum", ival[0]);
+    mat.illumination = ival[0];
+    skipToNextLine(data, pos);
+  } catch(exception& e) {
+    cerr << "Failed parsing 'illum' value from material '" << mat.name <<
+        "' (Object '" << mFileName  << "')" << endl;
+    mat.illumination = 1;
+  }
+
+  try {
+    /* Parse dissolve*/
+    parseParamInt(data, pos, "d", ival[0]);
+    mat.dissolve = ival[0];
+    skipToNextLine(data, pos);
+  } catch(exception& e) {
+    cerr << "Failed parsing 'd' value from material '" << mat.name <<
+        "' (Object '" << mFileName  << "')" << endl;
+    mat.dissolve = 0;
+  }
+
+  try {
+    /* Parse specular exponent */
+    parseParamInt(data, pos, "Ns", ival[0]);
+    mat.specularExponent = ival[0];
+    skipToNextLine(data, pos);
+  } catch(exception& e) {
+    cerr << "Failed parsing 'Ns' value from material '" << mat.name <<
+        "' (Object '" << mFileName  << "')" << endl;
+    mat.specularExponent = 5;
   }
 }
 
@@ -112,7 +199,8 @@ MtlObject::parseMtlData(const string& data)
 {
   string::size_type pos = 0;
 
-  while (true) {
+  int i = 0;
+  while (true && i++ < 10) {
     pos = data.find(MATERIAL_SENINTEL, pos);
     string::size_type mtlNameEnd = data.find("\n", pos);
     if ((pos == string::npos) || (mtlNameEnd == string::npos)) {
@@ -122,7 +210,9 @@ MtlObject::parseMtlData(const string& data)
 
     MtlMaterial *mat = new MtlMaterial();
     skipOptionalChars(data, pos);
+    mat->parent = this;
     mat->name = data.substr(pos, mtlNameEnd - pos);
+    skipToNextLine(data, pos);
     parseMtlColorAndIllumination(data, pos, *mat);
     parseMtlTextureAndReflectionMaps(data, pos, *mat);
     materials.push_back(mat);
@@ -133,7 +223,7 @@ void
 MtlObject::printMaterials(void)
 {
   cout << "Object '" << mFileName << "'" << endl;
-  for (int i = 0; i < materials.size(); ++i) {
+  for (unsigned int i = 0; i < materials.size(); ++i) {
     if (materials[i]) {
       materials[i]->printProperties(" ", ((i + 1) == materials.size()));
     }
