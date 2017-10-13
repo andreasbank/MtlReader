@@ -46,6 +46,7 @@ MtlObject::skipOptionalChars(const string& data, string::size_type& pos)
   while ((data[pos] == '\'') || (data[pos] == ' ') || (data[pos] == '"'))
     ++pos;
 }
+
 void
 MtlObject::skipToNextLine(const string& data, string::size_type& pos)
 {
@@ -55,6 +56,10 @@ MtlObject::skipToNextLine(const string& data, string::size_type& pos)
     ++localPos;
     pos = localPos;
   }
+
+  /* Skip whitespace */
+  while ((data[localPos] == ' ') || (data[localPos] == '\t'))
+    ++localPos;
 }
 
 void
@@ -143,21 +148,70 @@ MtlObject::parseMtlColorAndIllumination(const string& data,
   MtlMap decal; // decal (options filename)
   MtlMap disposition; //disp (options filename)
   */
+
+  typedef enum mtlKeyType {
+    KT_KA,
+    KT_KD,
+    KT_KS,
+  } mtlKeyType;
+
+  typedef enum mtlValType {
+    VT_FLOAT,
+    VT_2FLOATS,
+    VT_3FLOATS,
+    VT_INT,
+    VT_2INTS,
+    VT_3INTS
+  } mtlValType;
+
+  typedef struct mtlKey {
+    const char* key;
+    const mtlKeyType keyType;
+    const mtlValType valType;
+  } mtlKey;
+
+  static const mtlKey keys[] = {
+      { "Ka", KT_KA, VT_3FLOATS },
+      { "Kd", KT_KD, VT_3FLOATS },
+      { "Ks", KT_KS, VT_3FLOATS }
+  };
+
   string opts;
   float fval[3];
   int ival[3];
 
-  try {
-    /* Parse ambient color */
-    parseParam3Floats(data, pos, "Ka", opts, fval);
-    mat.ambientColor = { fval[0], fval[1], fval[2] };
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'Ka' values from material '" <<
-        mat.name << "' (Object '" << mFileName  << "')" << endl;
-    mat.ambientColor = { 0.5f, 0.5f, 0.5f };
+  for (const auto& k : keys) {
+    try {
+      /* Parse by key type */
+      switch (k.valType) {
+      case VT_3FLOATS:
+        cout << "Parsing " << k.key << endl;
+        parseParam3Floats(data, pos, k.key, opts, fval);
+        break;
+      case VT_INT:
+        cout << "Parsing " << k.key << endl;
+        parseParamInt(data, pos, k.key, opts, ival[0]);
+        break;
+      default:
+        cerr << "Fatal error, invalid value type" << endl;
+      }
+
+      /* Set to appropriate field in material object */
+      switch (k.keyType) {
+      case KT_KA:
+        mat.ambientColor = { fval[0], fval[1], fval[2] };
+        break;
+      default:
+        cerr << "Fatal error, invalid key type" << endl;
+      }
+    } catch(exception& e) {
+      cerr << "Failed parsing '" << k.key << "' value(s) from material '" <<
+          mat.name << "' (Object '" << mFileName  << "')" << endl;
+      mat.ambientColor = { 0.5f, 0.5f, 0.5f };
+    }
   }
 
+#if 0
   try {
     /* Parse diffuse color */
     parseParam3Floats(data, pos, "Kd", opts, fval);
@@ -212,6 +266,7 @@ MtlObject::parseMtlColorAndIllumination(const string& data,
         "' (Object '" << mFileName  << "')" << endl;
     mat.specularExponent = 5;
   }
+#endif
 }
 
 void
