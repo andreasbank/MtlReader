@@ -22,7 +22,19 @@ typedef enum mtlKeyType {
   KT_KS,
   KT_ILLUM,
   KT_D,
-  KT_NS
+  KT_NS,
+  KT_SHARPNESS,
+  KT_NI,
+  KT_MAPKA,
+  KT_MAPKD,
+  KT_MAPKS,
+  KT_MAPNS,
+  KT_MAPD,
+  KT_DISP,
+  KT_DECAL,
+  KT_BUMP,
+  KT_MAPBUMP,
+  KT_REFL,
 } mtlKeyType;
 
 typedef enum mtlValType {
@@ -31,7 +43,8 @@ typedef enum mtlValType {
   VT_3FLOATS,
   VT_INT,
   VT_2INTS,
-  VT_3INTS
+  VT_3INTS,
+  VT_STRING
 } mtlValType;
 
 typedef struct mtlKey {
@@ -64,9 +77,7 @@ MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
   }
   while (getline(dataFile, line))
     parseLine(line);
-    //data += line + '\n';
   dataFile.close();
-  //parseMtlData(data);
 }
 
 MtlObject::~MtlObject(void)
@@ -163,9 +174,6 @@ MtlObject::parseParamInt(const string& data, string::size_type& pos,
   }
 }
 
-//void
-//MtlObject::parseMtlColorAndIllumination(const string& data,
-//    string::size_type& pos, MtlMaterial& mat)
 void
 MtlObject::parseLine(const string& data)
 {
@@ -215,6 +223,7 @@ MtlObject::parseLine(const string& data)
   float fval[3];
   int ival[3];
 
+  /* Go through the list of valid keys */
   for (const auto& k : keys) {
     string::size_type localPos = 0;
 
@@ -274,39 +283,6 @@ MtlObject::parseLine(const string& data)
     }
   }
 }
-
-//void
-//MtlObject::parseMtlTextureAndReflectionMaps(const string& data,
-//    string::size_type& pos, MtlMaterial& mat)
-//{
-//  string::size_type mapKa = data.find("map_Ka");
-//  if (mapKa) != string::npos) {
-//    MtlMap *map = new MtlMap;
-//    initializeMtlMap(*map);
-//  }
-//}
-
-//void
-//MtlObject::parseNewMaterial(const string& data)
-//{
-//  string::size_type pos = 0;
-//
-//  pos = data.find(MATERIAL_SENINTEL, pos);
-//  string::size_type mtlNameEnd = data.find("\n", pos);
-//  if ((pos == string::npos) || (mtlNameEnd == string::npos)) {
-//    break;
-//  }
-//  pos += MATERIAL_SENINTEL_LEN;
-//
-//  MtlMaterial *mat = new MtlMaterial();
-//  skipOptionalChars(data, pos);
-//  mat->parent = this;
-//  mat->name = data.substr(pos, mtlNameEnd - pos);
-//  skipToNextLine(data, pos);
-//  parseMtlColorAndIllumination(data, pos, *mat);
-//  parseMtlTextureAndReflectionMaps(data, pos, *mat);
-//  materials.push_back(mat);
-//}
 
 void
 MtlObject::printMaterials(void)
