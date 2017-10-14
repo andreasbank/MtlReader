@@ -16,6 +16,39 @@
 
 using namespace std;
 
+typedef enum mtlKeyType {
+  KT_KA,
+  KT_KD,
+  KT_KS,
+  KT_ILLUM,
+  KT_D,
+  KT_NS
+} mtlKeyType;
+
+typedef enum mtlValType {
+  VT_FLOAT,
+  VT_2FLOATS,
+  VT_3FLOATS,
+  VT_INT,
+  VT_2INTS,
+  VT_3INTS
+} mtlValType;
+
+typedef struct mtlKey {
+  const char* key;
+  const mtlKeyType keyType;
+  const mtlValType valType;
+} mtlKey;
+
+static const mtlKey keys[] = {
+    { "Ka", KT_KA, VT_3FLOATS },
+    { "Kd", KT_KD, VT_3FLOATS },
+    { "Ks", KT_KS, VT_3FLOATS },
+    { "illum", KT_ILLUM, VT_INT },
+    { "d", KT_D, VT_FLOAT },
+    { "Ns", KT_NS, VT_INT }
+};
+
 class MtlParseException : public exception {
    const char * what () const throw () {
       return "Failed parsing the file";
@@ -25,14 +58,15 @@ class MtlParseException : public exception {
 MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
 {
   ifstream dataFile(fileName);
-  string data, line;
+  string line;
   if (!dataFile.is_open()) {
     cerr << "Failed to open file '" << fileName << "'" << endl;
   }
   while (getline(dataFile, line))
-    data += line + '\n';
+    parseLine(line);
+    //data += line + '\n';
   dataFile.close();
-  parseMtlData(data);
+  //parseMtlData(data);
 }
 
 MtlObject::~MtlObject(void)
@@ -129,9 +163,11 @@ MtlObject::parseParamInt(const string& data, string::size_type& pos,
   }
 }
 
+//void
+//MtlObject::parseMtlColorAndIllumination(const string& data,
+//    string::size_type& pos, MtlMaterial& mat)
 void
-MtlObject::parseMtlColorAndIllumination(const string& data,
-    string::size_type& pos, MtlMaterial& mat)
+MtlObject::parseLine(const string& data)
 {
   /*
   MtlColor ambientColor, diffuseColor, specularColor; // Ka, Kd, Ks (3 * [0 - 255])
@@ -148,42 +184,55 @@ MtlObject::parseMtlColorAndIllumination(const string& data,
   MtlMap decal; // decal (options filename)
   MtlMap disposition; //disp (options filename)
   */
+  string::size_type pos = 0;
 
-  typedef enum mtlKeyType {
-    KT_KA,
-    KT_KD,
-    KT_KS,
-  } mtlKeyType;
+  /* Always skip spaces */
+  skipOptionalChars(data, pos);
 
-  typedef enum mtlValType {
-    VT_FLOAT,
-    VT_2FLOATS,
-    VT_3FLOATS,
-    VT_INT,
-    VT_2INTS,
-    VT_3INTS
-  } mtlValType;
+  /* If we encounter a newmtl, create a new material object */
+  if (pos == data.find(MATERIAL_SENINTEL, pos)) {
+    pos += MATERIAL_SENINTEL_LEN;
+    MtlMaterial *mat = new MtlMaterial();
+    skipOptionalChars(data, pos);
+    mat->parent = this;
+    mat->name = data.substr(pos);
+    materials.push_back(mat);
+    cout << "Created material '" << mat->name << "'" << endl;
+    return;
+  }
 
-  typedef struct mtlKey {
-    const char* key;
-    const mtlKeyType keyType;
-    const mtlValType valType;
-  } mtlKey;
+  /* If no newmtl have been found previously then the file is erroneous,
+     since we have nothing to add found properties to */
+  if (!materials.size()) {
+    cerr << "No material in Mtl file" << endl;
+    return;
+  }
 
-  static const mtlKey keys[] = {
-      { "Ka", KT_KA, VT_3FLOATS },
-      { "Kd", KT_KD, VT_3FLOATS },
-      { "Ks", KT_KS, VT_3FLOATS }
-  };
+  /* Use last 'newmtl' for all properties we parse */
+  MtlMaterial& mat = *materials.back();
 
   string opts;
   float fval[3];
   int ival[3];
 
   for (const auto& k : keys) {
+    string::size_type localPos = 0;
+
+    /* Try to match the parameter name with a valid key */
+    if (((localPos = data.find(k.key, pos)) == string::npos) ||
+        pos != localPos)
+      continue;
+
+    localPos += strlen(k.key);
+    skipOptionalChars(data, localPos);
+
     try {
       /* Parse by key type */
       switch (k.valType) {
+      case VT_FLOAT:
+        cout << "Parsing " << k.key << endl;
+        parseParamFloat(data, pos, k.key, opts, fval[0]);
+        break;
       case VT_3FLOATS:
         cout << "Parsing " << k.key << endl;
         parseParam3Floats(data, pos, k.key, opts, fval);
@@ -201,109 +250,63 @@ MtlObject::parseMtlColorAndIllumination(const string& data,
       case KT_KA:
         mat.ambientColor = { fval[0], fval[1], fval[2] };
         break;
+      case KT_KD:
+        mat.diffuseColor = { fval[0], fval[1], fval[2] };
+        break;
+      case KT_KS:
+        mat.specularColor = { fval[0], fval[1], fval[2] };
+        break;
+      case KT_ILLUM:
+        mat.illumination = ival[0];
+        break;
+      case KT_D:
+        mat.dissolve = ival[0];
+        break;
+      case KT_NS:
+        mat.specularExponent = ival[0];
+        break;
       default:
         cerr << "Fatal error, invalid key type" << endl;
       }
     } catch(exception& e) {
       cerr << "Failed parsing '" << k.key << "' value(s) from material '" <<
           mat.name << "' (Object '" << mFileName  << "')" << endl;
-      mat.ambientColor = { 0.5f, 0.5f, 0.5f };
     }
   }
-
-#if 0
-  try {
-    /* Parse diffuse color */
-    parseParam3Floats(data, pos, "Kd", opts, fval);
-    mat.diffuseColor = { fval[0], fval[1], fval[2] };
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'Kd' values from material '" <<
-        mat.name << "' (Object '" << mFileName  << "')" << endl;
-    mat.diffuseColor = { 0.5f, 0.5f, 0.5f };
-  }
-
-  try {
-    /* Parse specular color */
-    parseParam3Floats(data, pos, "Ks", opts, fval);
-    mat.specularColor = { fval[0], fval[1], fval[2] };
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'Ka', 'Kd' or 'Ks' values from material '" <<
-        mat.name << "' (Object '" << mFileName  << "')" << endl;
-    mat.specularColor = { 0.5f, 0.5f, 0.5f };
-  }
-
-  try {
-    /* Parse illumination */
-    parseParamInt(data, pos, "illum", opts, ival[0]);
-    mat.illumination = ival[0];
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'illum' value from material '" << mat.name <<
-        "' (Object '" << mFileName  << "')" << endl;
-    mat.illumination = 1;
-  }
-
-  try {
-    /* Parse dissolve*/
-    parseParamFloat(data, pos, "d", opts, fval[0]);
-    mat.dissolve = fval[0];
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'd' value from material '" << mat.name <<
-        "' (Object '" << mFileName  << "')" << endl;
-    mat.dissolve = 0;
-  }
-
-  try {
-    /* Parse specular exponent */
-    parseParamInt(data, pos, "Ns", opts, ival[0]);
-    mat.specularExponent = ival[0];
-    skipToNextLine(data, pos);
-  } catch(exception& e) {
-    cerr << "Failed parsing 'Ns' value from material '" << mat.name <<
-        "' (Object '" << mFileName  << "')" << endl;
-    mat.specularExponent = 5;
-  }
-#endif
 }
 
-void
-MtlObject::parseMtlTextureAndReflectionMaps(const string& data,
-    string::size_type& pos, MtlMaterial& mat)
-{
-  //string::size_type mapKa = data.find("map_Ka");
-  //if (mapKa) != string::npos) {
-  //  MtlMap *map = new MtlMap;
-  //  initializeMtlMap(*map);
-  //}
-}
+//void
+//MtlObject::parseMtlTextureAndReflectionMaps(const string& data,
+//    string::size_type& pos, MtlMaterial& mat)
+//{
+//  string::size_type mapKa = data.find("map_Ka");
+//  if (mapKa) != string::npos) {
+//    MtlMap *map = new MtlMap;
+//    initializeMtlMap(*map);
+//  }
+//}
 
-void
-MtlObject::parseMtlData(const string& data)
-{
-  string::size_type pos = 0;
-
-  int i = 0;
-  while (true && i++ < 10) {
-    pos = data.find(MATERIAL_SENINTEL, pos);
-    string::size_type mtlNameEnd = data.find("\n", pos);
-    if ((pos == string::npos) || (mtlNameEnd == string::npos)) {
-      break;
-    }
-    pos += MATERIAL_SENINTEL_LEN;
-
-    MtlMaterial *mat = new MtlMaterial();
-    skipOptionalChars(data, pos);
-    mat->parent = this;
-    mat->name = data.substr(pos, mtlNameEnd - pos);
-    skipToNextLine(data, pos);
-    parseMtlColorAndIllumination(data, pos, *mat);
-    parseMtlTextureAndReflectionMaps(data, pos, *mat);
-    materials.push_back(mat);
-  }
-}
+//void
+//MtlObject::parseNewMaterial(const string& data)
+//{
+//  string::size_type pos = 0;
+//
+//  pos = data.find(MATERIAL_SENINTEL, pos);
+//  string::size_type mtlNameEnd = data.find("\n", pos);
+//  if ((pos == string::npos) || (mtlNameEnd == string::npos)) {
+//    break;
+//  }
+//  pos += MATERIAL_SENINTEL_LEN;
+//
+//  MtlMaterial *mat = new MtlMaterial();
+//  skipOptionalChars(data, pos);
+//  mat->parent = this;
+//  mat->name = data.substr(pos, mtlNameEnd - pos);
+//  skipToNextLine(data, pos);
+//  parseMtlColorAndIllumination(data, pos, *mat);
+//  parseMtlTextureAndReflectionMaps(data, pos, *mat);
+//  materials.push_back(mat);
+//}
 
 void
 MtlObject::printMaterials(void)

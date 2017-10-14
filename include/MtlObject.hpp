@@ -23,11 +23,11 @@ public:
     const std::string& param, std::string& opts, float& value);
   void parseParamInt(const std::string& data, std::string::size_type& pos,
     const std::string& param, std::string& opts, int& value);
-  void parseMtlColorAndIllumination(const std::string& data,
-      std::string::size_type& pos, MtlMaterial& mat);
-  void parseMtlTextureAndReflectionMaps(const std::string& data,
-      std::string::size_type& pos, MtlMaterial& mat);
-  void parseMtlData(const std::string& data);
+  //void parseMtlColorAndIllumination(const std::string& data,
+  //    std::string::size_type& pos, MtlMaterial& mat);
+  //void parseMtlTextureAndReflectionMaps(const std::string& data,
+  //    std::string::size_type& pos, MtlMaterial& mat);
+  void parseLine(const std::string& data);
   void printMaterials(void);
 
   std::string mFileName;
