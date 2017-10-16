@@ -17,12 +17,14 @@ public:
   ~MtlObject(void);
   void skipOptionalChars(const std::string& data, std::string::size_type& pos);
   void skipToNextLine(const std::string& data, std::string::size_type& pos);
+  void parseOptions(const std::string& data, std::string::size_type& pos,
+      void *pret);
   void parseParam3Floats(const std::string& data, std::string::size_type& pos,
-      const std::string& param, std::string& opts, float value[]);
+      float value[]);
   void parseParamFloat(const std::string& data, std::string::size_type& pos,
-    const std::string& param, std::string& opts, float& value);
+      float& value);
   void parseParamInt(const std::string& data, std::string::size_type& pos,
-    const std::string& param, std::string& opts, int& value);
+      int& value);
   void parseLine(const std::string& data);
   void printMaterials(void);
 

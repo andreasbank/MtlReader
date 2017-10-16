@@ -7,6 +7,7 @@
 #include <iostream>
 #include <list>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "MtlObject.hpp"
@@ -20,6 +21,7 @@ typedef enum mtlKeyType {
   KT_KA,
   KT_KD,
   KT_KS,
+  KT_TF,
   KT_ILLUM,
   KT_D,
   KT_NS,
@@ -44,22 +46,67 @@ typedef enum mtlValType {
   VT_INT,
   VT_2INTS,
   VT_3INTS,
-  VT_STRING
+  VT_STRING,
+  VT_STRING_AND_FLOAT,
 } mtlValType;
 
-typedef struct mtlKey {
-  const char* key;
-  const mtlKeyType keyType;
+typedef mtlValType mtlOptType;
+
+typedef struct mtlOpt {
+    const char* optName;
+    const mtlOptType optType;
+} mtlOpt;
+
+typedef struct mtlVal {
+  const char* valName;
   const mtlValType valType;
+} mtlVal;
+
+typedef struct mtlKey {
+  const char* keyName;
+  const mtlKeyType keyType;
+  const int nrOptions;
+  const mtlOpt* options;
+  const int nrValues;
+  const mtlVal* values;
 } mtlKey;
 
+/** A structure describing the possible MTL file material
+    parameters and its options */
 static const mtlKey keys[] = {
-    { "Ka", KT_KA, VT_3FLOATS },
-    { "Kd", KT_KD, VT_3FLOATS },
-    { "Ks", KT_KS, VT_3FLOATS },
-    { "illum", KT_ILLUM, VT_INT },
-    { "d", KT_D, VT_FLOAT },
-    { "Ns", KT_NS, VT_INT }
+
+    { "Ka", KT_KA,
+      0, /* Number of options */
+      nullptr, /* Options (new mtlOpt{ { "-o", VT_3FLOATS }, ... }) */
+      3, /* Number of possible value-types */
+      new mtlVal[3]{ /* Possible value-types */
+        { "xyz", VT_3FLOATS },
+        { "spectral", VT_STRING_AND_FLOAT },
+        { nullptr, VT_3FLOATS }
+      }
+    },
+
+    { "Kd", KT_KD, 0, nullptr, 3, new mtlVal[3]{
+        { "xyz", VT_3FLOATS },
+        { "spectral", VT_STRING_AND_FLOAT },
+        { nullptr, VT_3FLOATS } } },
+
+    { "Ks", KT_KS, 0, nullptr, 3, new mtlVal[3]{
+        { "xyz", VT_3FLOATS },
+        { "spectral", VT_STRING_AND_FLOAT },
+        { nullptr, VT_3FLOATS } } },
+
+    { "Tf", KT_TF, 0, nullptr, 3, new mtlVal[3]{
+        { "xyz", VT_3FLOATS },
+        { "spectral", VT_STRING_AND_FLOAT },
+        { nullptr, VT_3FLOATS } } },
+
+    { "illum", KT_ILLUM, 0, nullptr, 1, new mtlVal{ nullptr, VT_INT } },
+
+    { "d", KT_D, 1, new mtlOpt{ "-halo", VT_FLOAT }, 1,
+        new mtlVal{ nullptr, VT_FLOAT } },
+
+    { "Ns", KT_NS, 0, nullptr, 1, new mtlVal{ nullptr, VT_INT } },
 };
 
 class MtlParseException : public exception {
@@ -75,8 +122,13 @@ MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
   if (!dataFile.is_open()) {
     cerr << "Failed to open file '" << fileName << "'" << endl;
   }
+
   while (getline(dataFile, line))
+  {
+    cout << "^^^^ PARSING LINE" << endl;
     parseLine(line);
+  }
+
   dataFile.close();
 }
 
@@ -99,79 +151,53 @@ MtlObject::skipToNextLine(const string& data, string::size_type& pos)
 
   if (localPos != string::npos) {
     ++localPos;
+    /* Skip whitespace */
+    while ((data[localPos] == ' ') || (data[localPos] == '\t'))
+      ++localPos;
     pos = localPos;
   }
 
-  /* Skip whitespace */
-  while ((data[localPos] == ' ') || (data[localPos] == '\t'))
-    ++localPos;
 }
 
 void
 MtlObject::parseParam3Floats(const string& data, string::size_type& pos,
-    const string& param, string& opts, float value[])
+    float value[])
 {
-  string::size_type localPos = pos;
-  string::size_type lineEnd = data.find_first_of("\n", localPos);
-  skipOptionalChars(data, localPos);
-  if (((localPos = data.find(param, localPos)) != string::npos) &&
-      (localPos < lineEnd)) {
-    localPos += param.length();
-    /* Extract first float */
-    skipOptionalChars(data, localPos);
-    string::size_type endPos = data.find(" ", localPos);
-    string floatString = data.substr(localPos, endPos - localPos);
-    value[0] = stof(floatString);
-    localPos = endPos;
-    /* Extract second float */
-    skipOptionalChars(data, localPos);
-    skipOptionalChars(data, endPos);
-    endPos = data.find(" ", localPos);
-    floatString = data.substr(localPos, endPos - localPos);
-    value[1] = stof(floatString);
-    localPos = endPos;
-    /* Extract third float */
-    skipOptionalChars(data, localPos);
-    skipOptionalChars(data, endPos);
-    endPos = data.find(" ", localPos);
-    floatString = data.substr(localPos, endPos - localPos);
-    value[2] = stof(floatString);
-  } else {
-    throw MtlParseException();
-  }
+  /* Extract first float */
+  skipOptionalChars(data, pos);
+  string::size_type endPos = data.find(" ", pos);
+  value[0] = stof(data.substr(pos, endPos - pos));
+  pos = endPos;
+  /* Extract second float */
+  skipOptionalChars(data, pos);
+  endPos = data.find(" ", pos);
+  value[1] = stof(data.substr(pos, endPos - pos));
+  pos = endPos;
+  /* Extract third float */
+  skipOptionalChars(data, pos);
+  endPos = data.find(" ", pos);
+  value[2] = stof(data.substr(pos, endPos - pos));
+  pos = endPos;
 }
 
 void
 MtlObject::parseParamFloat(const string& data, string::size_type& pos,
-    const string& param, string& opts, float& value)
+    float& value)
 {
-  string::size_type localPos = pos;
-  string::size_type lineEnd = data.find_first_of("\n", localPos);
-  skipOptionalChars(data, localPos);
-  if (((localPos = data.find(param, localPos)) != string::npos) &&
-      (localPos < lineEnd)) {
-    localPos += param.length();
-    skipOptionalChars(data, localPos);
-    value = stof(data.substr(localPos, lineEnd - localPos));
-  } else {
-    throw MtlParseException();
-  }
+  skipOptionalChars(data, pos);
+  string::size_type left = 0;
+  value = stof(data.substr(pos), &left);
+  pos += left;
 }
+
 void
 MtlObject::parseParamInt(const string& data, string::size_type& pos,
-    const string& param, string& opts, int& value)
+    int& value)
 {
-  string::size_type localPos = pos;
-  string::size_type lineEnd = data.find_first_of("\n", localPos);
-  skipOptionalChars(data, localPos);
-  if (((localPos = data.find(param, localPos)) != string::npos) &&
-      (localPos < lineEnd)) {
-    localPos += param.length();
-    skipOptionalChars(data, localPos);
-    value = stoi(data.substr(localPos, lineEnd - localPos));
-  } else {
-    throw MtlParseException();
-  }
+  skipOptionalChars(data, pos);
+  string::size_type left = 0;
+  value = stoi(data.substr(pos), &left);
+  pos += left;
 }
 
 void
@@ -212,7 +238,7 @@ MtlObject::parseLine(const string& data)
   /* If no newmtl have been found previously then the file is erroneous,
      since we have nothing to add found properties to */
   if (!materials.size()) {
-    cerr << "No material in Mtl file" << endl;
+    cerr << "No material yet in Mtl file, skipping line" << endl;
     return;
   }
 
@@ -220,68 +246,115 @@ MtlObject::parseLine(const string& data)
   MtlMaterial& mat = *materials.back();
 
   string opts;
-  float fval[3];
-  int ival[3];
 
   /* Go through the list of valid keys */
+  bool keyMatched = false;
   for (const auto& k : keys) {
-    string::size_type localPos = 0;
+    string::size_type keyNameSize = string(k.keyName).length();
 
     /* Try to match the parameter name with a valid key */
-    if (((localPos = data.find(k.key, pos)) == string::npos) ||
-        pos != localPos)
+    if (((data.compare(pos, keyNameSize, k.keyName)) != 0) ||
+        (data[keyNameSize] != ' '))
       continue;
 
-    localPos += strlen(k.key);
-    skipOptionalChars(data, localPos);
+    keyMatched = true;
 
-    try {
-      /* Parse by key type */
-      switch (k.valType) {
-      case VT_FLOAT:
-        cout << "Parsing " << k.key << endl;
-        parseParamFloat(data, pos, k.key, opts, fval[0]);
-        break;
-      case VT_3FLOATS:
-        cout << "Parsing " << k.key << endl;
-        parseParam3Floats(data, pos, k.key, opts, fval);
-        break;
-      case VT_INT:
-        cout << "Parsing " << k.key << endl;
-        parseParamInt(data, pos, k.key, opts, ival[0]);
-        break;
-      default:
-        cerr << "Fatal error, invalid value type" << endl;
+    cout << "Matched key: " << k.keyName << endl;
+    pos += keyNameSize;
+    skipOptionalChars(data, pos);
+
+    /* Go through all the possible values for this key */
+    bool valueMatched = false;
+    for (int i = 0; i < k.nrValues; ++i) {
+      const mtlVal& v = k.values[i];
+
+      /* Check if the value type matches */
+      if (v.valName && data.compare(pos, string(
+          const_cast<const char *>(v.valName)).size(), v.valName))
+        continue;
+
+      valueMatched = true;
+
+      cout << "Matched value: " << (v.valName ? v.valName : "unnamed") << endl;
+      try {
+        float floatData[3];
+        int intData[3];
+
+        /* Parse by value type */
+        switch (v.valType) {
+        case VT_FLOAT:
+          cout << "Parsing float for " << k.keyName << endl;
+          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseParamFloat(data, pos, floatData[0]);
+          break;
+        case VT_3FLOATS:
+          cout << "Parsing float[3] for " << k.keyName << endl;
+          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseParam3Floats(data, pos, floatData);
+          break;
+        case VT_INT:
+          cout << "Parsing int for " << k.keyName << endl;
+          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseParamInt(data, pos, intData[0]);
+          break;
+        default:
+          cerr << "Fatal error, invalid value type (\"" <<
+              (v.valName ? v.valName : "unnamed") << "\", " << v.valType
+              << ")" << endl;
+          throw MtlParseException();
+        }
+
+        /* Set to appropriate field in material object */
+        switch (k.keyType) {
+        case KT_KA:
+          mat.ambientColor = { floatData[0], floatData[1], floatData[2] };
+          break;
+        case KT_KD:
+          mat.diffuseColor = { floatData[0], floatData[1], floatData[2] };
+          break;
+        case KT_KS:
+          mat.specularColor = { floatData[0], floatData[1], floatData[2] };
+          break;
+        case KT_TF:
+          mat.transformFilter = { floatData[0], floatData[1], floatData[2] };
+          break;
+        case KT_ILLUM:
+          mat.illumination = intData[0];
+          break;
+        case KT_D:
+          mat.dissolve = floatData[0];
+          break;
+        case KT_NS:
+          mat.specularExponent = intData[0];
+          break;
+        default:
+          cerr << "Fatal error, invalid key type (" << k.keyType << ")" <<
+              endl;
+        }
+      } catch(exception& e) {
+        cerr << "Failed parsing '" << k.keyName << "' value(s) from material '"
+            << mat.name << "' (Object '" << mFileName  << "')" << endl;
       }
 
-      /* Set to appropriate field in material object */
-      switch (k.keyType) {
-      case KT_KA:
-        mat.ambientColor = { fval[0], fval[1], fval[2] };
+      /* If we have matched the parameters value with a valid key value then do
+         not continue searching for a matching key value */
+      if (valueMatched)
+      {
+        cout << "--- DONE VAL" << endl;
         break;
-      case KT_KD:
-        mat.diffuseColor = { fval[0], fval[1], fval[2] };
-        break;
-      case KT_KS:
-        mat.specularColor = { fval[0], fval[1], fval[2] };
-        break;
-      case KT_ILLUM:
-        mat.illumination = ival[0];
-        break;
-      case KT_D:
-        mat.dissolve = ival[0];
-        break;
-      case KT_NS:
-        mat.specularExponent = ival[0];
-        break;
-      default:
-        cerr << "Fatal error, invalid key type" << endl;
       }
-    } catch(exception& e) {
-      cerr << "Failed parsing '" << k.key << "' value(s) from material '" <<
-          mat.name << "' (Object '" << mFileName  << "')" << endl;
+
+    } /* for key values */
+
+    /* If we have matched the parameter with a valid key then do not continue
+       searching for a matching key */
+    if (keyMatched)
+    {
+      cout << "--- DONE KEY" << endl;
+      break;
     }
-  }
+
+  } /* for keys */
 }
 
 void
