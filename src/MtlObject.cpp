@@ -2,7 +2,6 @@
  * @copyright 2017 Andreas Bank, andreas.mikael.bank@gmail.com
  */
 
-#include <exception>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -12,18 +11,12 @@
 
 #include "MtlObject.hpp"
 #include "MtlObject_int.hpp"
+#include "MtlObjectExceptions.hpp"
 
 #define MATERIAL_SENINTEL "newmtl"
 #define MATERIAL_SENINTEL_LEN 7
 
 using namespace std;
-
-
-class MtlParseException : public exception {
-   const char * what () const throw () {
-      return "Failed parsing the file";
-   }
-};
 
 MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
 {
@@ -111,6 +104,16 @@ MtlObject::parseParamInt(const string& data, string::size_type& pos,
 }
 
 void
+MtlObject::parseParamString(const string& data, string::size_type& pos,
+    string& value)
+{
+  skipOptionalChars(data, pos);
+  string::size_type left = 0;
+  value = stoi(data.substr(pos), &left);
+  pos += left;
+}
+
+void
 MtlObject::parseLine(const string& data)
 {
   /*
@@ -189,7 +192,7 @@ MtlObject::parseLine(const string& data)
       try {
         float floatData[3];
         int intData[3];
-        string stringData();
+        string stringData;
 
         /* Parse by value type */
         switch (v.valType) {
