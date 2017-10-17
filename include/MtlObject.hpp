@@ -25,6 +25,8 @@ public:
       float& value);
   void parseParamInt(const std::string& data, std::string::size_type& pos,
       int& value);
+  void parseParamString(const std::string& data, std::string::size_type& pos,
+      std::string& value);
   void parseLine(const std::string& data);
   void printMaterials(void);
 

@@ -69,17 +69,20 @@ MtlObject::parseParam3Floats(const string& data, string::size_type& pos,
   /* Extract first float */
   skipOptionalChars(data, pos);
   string::size_type endPos = data.find(" ", pos);
-  value[0] = stof(data.substr(pos, endPos - pos));
+  value[0] = stof(data.substr(pos,
+      (endPos != string::npos ? endPos - pos : endPos)));
   pos = endPos;
   /* Extract second float */
   skipOptionalChars(data, pos);
   endPos = data.find(" ", pos);
-  value[1] = stof(data.substr(pos, endPos - pos));
+  value[1] = stof(data.substr(pos,
+      (endPos != string::npos ? endPos - pos : endPos)));
   pos = endPos;
   /* Extract third float */
   skipOptionalChars(data, pos);
   endPos = data.find(" ", pos);
-  value[2] = stof(data.substr(pos, endPos - pos));
+  value[2] = stof(data.substr(pos,
+      (endPos != string::npos ? endPos - pos : endPos)));
   pos = endPos;
 }
 
@@ -108,9 +111,9 @@ MtlObject::parseParamString(const string& data, string::size_type& pos,
     string& value)
 {
   skipOptionalChars(data, pos);
-  string::size_type left = 0;
-  value = stoi(data.substr(pos), &left);
-  pos += left;
+  string::size_type endPos = data.find(" ", pos);
+  value = data.substr(pos, (endPos != string::npos ? endPos - pos : endPos));
+  pos = endPos;
 }
 
 void
