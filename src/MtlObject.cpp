@@ -18,6 +18,8 @@
 
 using namespace std;
 
+static void parseLine(vector<MtlMaterial *>& materials, const string& data);
+
 MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
 {
   ifstream dataFile(fileName);
@@ -28,8 +30,7 @@ MtlObject::MtlObject(const string& fileName) : mFileName(fileName)
 
   while (getline(dataFile, line))
   {
-    cout << "^^^^ PARSING LINE" << endl;
-    parseLine(line);
+    parseLine(materials, line);
   }
 
   dataFile.close();
@@ -41,29 +42,25 @@ MtlObject::~MtlObject(void)
 }
 
 void
-MtlObject::skipOptionalChars(const string& data, string::size_type& pos)
+MtlObject::printMaterials(void)
+{
+  cout << "Object '" << mFileName << "'" << endl;
+  for (unsigned int i = 0; i < materials.size(); ++i) {
+    if (materials[i]) {
+      materials[i]->printProperties(" ", ((i + 1) == materials.size()));
+    }
+  }
+}
+
+static void
+skipOptionalChars(const string& data, string::size_type& pos)
 {
   while ((data[pos] == '\'') || (data[pos] == ' ') || (data[pos] == '"'))
     ++pos;
 }
 
-void
-MtlObject::skipToNextLine(const string& data, string::size_type& pos)
-{
-  string::size_type localPos = data.find_first_of("\n", pos);
-
-  if (localPos != string::npos) {
-    ++localPos;
-    /* Skip whitespace */
-    while ((data[localPos] == ' ') || (data[localPos] == '\t'))
-      ++localPos;
-    pos = localPos;
-  }
-
-}
-
-void
-MtlObject::parseParam3Floats(const string& data, string::size_type& pos,
+static void
+parseParam3Floats(const string& data, string::size_type& pos,
     float value[])
 {
   /* Extract first float */
@@ -86,8 +83,8 @@ MtlObject::parseParam3Floats(const string& data, string::size_type& pos,
   pos = endPos;
 }
 
-void
-MtlObject::parseParamFloat(const string& data, string::size_type& pos,
+static void
+parseParamFloat(const string& data, string::size_type& pos,
     float& value)
 {
   skipOptionalChars(data, pos);
@@ -96,8 +93,8 @@ MtlObject::parseParamFloat(const string& data, string::size_type& pos,
   pos += left;
 }
 
-void
-MtlObject::parseParamInt(const string& data, string::size_type& pos,
+static void
+parseParamInt(const string& data, string::size_type& pos,
     int& value)
 {
   skipOptionalChars(data, pos);
@@ -106,8 +103,8 @@ MtlObject::parseParamInt(const string& data, string::size_type& pos,
   pos += left;
 }
 
-void
-MtlObject::parseParamString(const string& data, string::size_type& pos,
+static void
+parseParamString(const string& data, string::size_type& pos,
     string& value)
 {
   skipOptionalChars(data, pos);
@@ -116,8 +113,46 @@ MtlObject::parseParamString(const string& data, string::size_type& pos,
   pos = endPos;
 }
 
-void
-MtlObject::parseLine(const string& data)
+static void
+parseOptions(const string& data, string::size_type& pos,
+    size_t nrOptions, const mtlOpt* options, vector<void*>& values)
+{
+  for (size_t i = 0; i < nrOptions; ++i) {
+    const string& option = options[i].optName;
+    const mtlValType type = options[i].optType;
+    const string::size_type length = string(const_cast<const char *>(
+        options[i].optName)).length();
+    string::size_type localPos = 0;
+
+    if (data.compare(pos, length, option) || (data[pos + 1] != ' '))
+      continue;
+
+    localPos = pos + length;
+
+    switch (type) {
+    case VT_EMPTY:
+      values.push_back(nullptr);
+      break;
+    case VT_3FLOATS:
+      {
+        float* fVals = new float[3]{0};
+        parseParam3Floats(data, localPos, fVals);
+        values.push_back(static_cast<void *>(fVals));
+      }
+      break;
+    case VT_FLOAT:
+      break;
+    case VT_INT:
+      break;
+    default:
+      cerr << "Error parsing options" << endl;
+      throw MtlParseException();
+    }
+  }
+}
+
+static void
+parseLine(vector<MtlMaterial *>& materials, const string& data)
 {
   /*
   MtlColor ambientColor, diffuseColor, specularColor; // Ka, Kd, Ks (3 * [0 - 255])
@@ -144,7 +179,6 @@ MtlObject::parseLine(const string& data)
     pos += MATERIAL_SENINTEL_LEN;
     MtlMaterial *mat = new MtlMaterial();
     skipOptionalChars(data, pos);
-    mat->parent = this;
     mat->name = data.substr(pos);
     materials.push_back(mat);
     cout << "Created material '" << mat->name << "'" << endl;
@@ -183,40 +217,45 @@ MtlObject::parseLine(const string& data)
     bool valueMatched = false;
     for (int i = 0; i < k.nrValues; ++i) {
       const mtlVal& v = k.values[i];
+      string::size_type valNameSize = (v.valName ? string(v.valName).length() :
+          0);
 
       /* Check if the value type matches */
-      if (v.valName && data.compare(pos, string(
-          const_cast<const char *>(v.valName)).size(), v.valName))
+      if (v.valName && data.compare(pos, valNameSize, v.valName))
         continue;
 
       valueMatched = true;
 
       cout << "Matched value: " << (v.valName ? v.valName : "unnamed") << endl;
+      pos += valNameSize;
+      skipOptionalChars(data, pos);
+
       try {
         float floatData[3];
         int intData[3];
         string stringData;
+        vector<void *> optionsBuffer;
 
         /* Parse by value type */
         switch (v.valType) {
         case VT_FLOAT:
           cout << "Parsing float for " << k.keyName << endl;
-          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseOptions(data, pos, k.nrOptions, k.options, optionsBuffer);
           parseParamFloat(data, pos, floatData[0]);
           break;
         case VT_3FLOATS:
           cout << "Parsing float[3] for " << k.keyName << endl;
-          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseOptions(data, pos, k.nrOptions, k.options, optionsBuffer);
           parseParam3Floats(data, pos, floatData);
           break;
         case VT_INT:
           cout << "Parsing int for " << k.keyName << endl;
-          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseOptions(data, pos, k.nrOptions, k.options, optionsBuffer);
           parseParamInt(data, pos, intData[0]);
           break;
         case VT_STRING_AND_FLOAT:
           cout << "Parsing int for " << k.keyName << endl;
-          //parseOptions(data, pos, k.nrOptions, k.options, string
+          parseOptions(data, pos, k.nrOptions, k.options, optionsBuffer);
           parseParamString(data, pos, stringData);
           break;
         default:
@@ -254,8 +293,8 @@ MtlObject::parseLine(const string& data)
               endl;
         }
       } catch(exception& e) {
-        cerr << "Failed parsing '" << k.keyName << "' value(s) from material '"
-            << mat.name << "' (Object '" << mFileName  << "')" << endl;
+        cerr << "Failed parsing '" << k.keyName << "' value(s) from material"
+            << endl;
       }
 
       /* If we have matched the parameters value with a valid key value then do
@@ -279,14 +318,4 @@ MtlObject::parseLine(const string& data)
   } /* for keys */
 }
 
-void
-MtlObject::printMaterials(void)
-{
-  cout << "Object '" << mFileName << "'" << endl;
-  for (unsigned int i = 0; i < materials.size(); ++i) {
-    if (materials[i]) {
-      materials[i]->printProperties(" ", ((i + 1) == materials.size()));
-    }
-  }
-}
 

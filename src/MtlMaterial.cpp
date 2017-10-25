@@ -9,7 +9,7 @@
 using namespace std;
 
 MtlMaterial::MtlMaterial(const std::string& matName) :
-    parent(nullptr), name(matName), illumination(0), dissolve(0.0f),
+    name(matName), illumination(0), dissolve(0.0f),
     specularExponent(0), sharpness(0.0f), opticalDensity(0.0f),
     mapAmbientColor("ambient"), mapDiffuseColor("diffuse"),
     mapSpecularColor("specular color"),
@@ -25,6 +25,9 @@ MtlMaterial::MtlMaterial(const std::string& matName) :
   specularColor.red = 0.0f;
   specularColor.green = 0.0f;
   specularColor.blue = 0.0f;
+  transformFilter.red = 0.0f;
+  transformFilter.green = 0.0f;
+  transformFilter.blue = 0.0f;
 }
 
 void
@@ -39,6 +42,9 @@ MtlMaterial::printProperties(const string& prefix, bool isLast)
       diffuseColor.green << ", " << diffuseColor.blue << endl;
   cout << prefix << localPrefix << "specularColor (Ks): " << specularColor.red << ", " <<
       specularColor.green << ", " << specularColor.blue << endl;
+  cout << prefix << localPrefix << "Transform filter (Tf): " <<
+      transformFilter.red << ", " << transformFilter.green << ", " <<
+      transformFilter.blue << endl;
   cout << prefix << localPrefix << "illumination (illum): " << illumination << endl;
   cout << prefix << localPrefix << "dissolve (d): " << dissolve << endl;
   cout << prefix << localPrefix << "specularExponent (Ns): " << specularExponent << endl;

@@ -36,6 +36,7 @@ typedef enum mtlValType {
   VT_3INTS,
   VT_STRING,
   VT_STRING_AND_FLOAT,
+  VT_EMPTY,
 } mtlValType;
 
 typedef mtlValType mtlOptType;
@@ -66,8 +67,11 @@ static const mtlVal kVals[] = {
     { nullptr, VT_3FLOATS }
 };
 
+/** 'Ka, Kd, Ks, Tf' options (-o) */
+static const mtlOpt kOpts = { "-o", VT_3FLOATS };
+
 /** 'd' options (-halo) */
-static const mtlOpt dOpts = { "-halo", VT_FLOAT };
+static const mtlOpt dOpts = { "-halo", VT_EMPTY };
 
 /** Possible values - single int */
 static const mtlVal intVal = { nullptr, VT_INT };
@@ -81,7 +85,7 @@ static const mtlKey keys[] = {
 
     { "Ka", KT_KA,
       0, /* Number of options */
-      nullptr, /* Options (new mtlOpt{ { "-o", VT_3FLOATS }, ... }) */
+      nullptr, /* Options (new mtlOpt[N]{ { "-o", VT_3FLOATS }, ... }) */
       3, /* Number of possible value-types */
       kVals /* Possible values */
     },

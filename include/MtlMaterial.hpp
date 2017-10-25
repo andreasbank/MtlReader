@@ -21,7 +21,6 @@ public:
   void printProperties(const std::string& prefix = std::string(),
       bool isLast = false);
 
-  MtlObject* parent;
   std::string name; // newmtl (string)
   MtlColor ambientColor, diffuseColor, specularColor; // Ka, Kd, Ks (3 * [0 - 1])
   MtlColor transformFilter; // Tf (3 * [0 - 1])
