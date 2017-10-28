@@ -231,8 +231,8 @@ parseLine(vector<MtlMaterial *>& materials, const string& data)
       skipOptionalChars(data, pos);
 
       try {
-        float floatData[3];
-        int intData[3];
+        float floatData[3] = {0};
+        int intData[3] = {0};
         string stringData;
         vector<void *> optionsBuffer;
 

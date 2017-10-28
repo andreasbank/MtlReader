@@ -37,3 +37,7 @@ libmtlreader.so
 
 # VI stuff
 *.swp
+
+# Custom
+.debug
+.nocompr

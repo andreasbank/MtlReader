@@ -5,7 +5,8 @@ DOXYGEN       ?= $(shell which doxygen)
 VALGRIND      ?= $(shell which valgrind)
 VALGRIND_OPTS ?= --tool=memcheck --leak-check=yes
 VALGRIND_PROG ?= $(BASE_DIR)/$(PROG) -Ux -f mac=0
-DEBUG_FILE    ?= $(BASE_DIR)/.debug
+DEBUG_FILE     = $(BASE_DIR)/.debug
+NOCOMPR_FILE   = $(BASE_DIR)/.nocompr
 
 PROG           = mtlreader
 PROG_SO        = libmtlreader.so
@@ -60,10 +61,12 @@ ifneq ("$(STRIP)","")
 else
 	@echo -e $(STRIP_ERROR)
 endif
+ifeq ("$(wildcard $(NOCOMPR_FILE))","")
 ifneq ("$(UPX)","")
 	$(UPX) $(UPX_LEVEL) $@; true
 else
 	@echo -e $(UPX_ERROR)
+endif
 endif
 else
 	@echo -e $(DEBUG_NOTE)
@@ -77,10 +80,12 @@ ifneq ("$(STRIP)","")
 else
 	@echo -e $(STRIP_ERROR)
 endif
+ifeq ("$(wildcard $(NOCOMPR_FILE))","")
 ifneq ("$(UPX)","")
 	$(UPX) $(UPX_LEVEL) $@; true
 else
 	@echo -e $(UPX_ERROR)
+endif
 endif
 else
 	@echo -e $(DEBUG_NOTE)
@@ -105,6 +110,12 @@ debug: clean
 
 nodebug: clean
 	$(RM) $(DEBUG_FILE)
+
+nocompress: clean
+	touch $(NOCOMPR_FILE)
+
+compress: clean
+	$(RM) $(NOCOMPR_FILE)
 
 checkmem: $(PROG)
 ifneq ("$(VALGRIND)","")
