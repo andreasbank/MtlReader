@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 #include "MtlObject.hpp"
 #include "MtlObject_int.hpp"
@@ -115,11 +116,12 @@ parseParamString(const string& data, string::size_type& pos,
 
 static void
 parseOptions(const string& data, string::size_type& pos,
-    size_t nrOptions, const mtlOpt* options, vector<void*>& values)
+    size_t nrOptions, const mtlOpt* options,
+    vector<tuple<const mtlOpt&, void *>>& values)
 {
   for (size_t i = 0; i < nrOptions; ++i) {
     const string& option = options[i].optName;
-    const mtlValType type = options[i].optType;
+    const mtlOptType type = options[i].optType;
     const string::size_type length = string(const_cast<const char *>(
         options[i].optName)).length();
     string::size_type localPos = 0;
@@ -129,25 +131,39 @@ parseOptions(const string& data, string::size_type& pos,
 
     localPos = pos + length;
 
+    tuple<const mtlOpt&, void *> value(options[i], nullptr);
+
     switch (type) {
     case VT_EMPTY:
-      values.push_back(nullptr);
+      /* tuple value is already nullptr */
       break;
     case VT_3FLOATS:
       {
         float* fVals = new float[3]{0};
         parseParam3Floats(data, localPos, fVals);
-        values.push_back(static_cast<void *>(fVals));
+        get<1>(value) = static_cast<void *>(fVals);
       }
       break;
     case VT_FLOAT:
+      {
+        float* fVal = new float(0);
+        parseParamFloat(data, localPos, *fVal);
+        get<1>(value) = static_cast<void *>(fVal);
+      }
       break;
     case VT_INT:
+      {
+        int* iVal = new int(0);
+        parseParamInt(data, localPos, *iVal);
+        get<1>(value) = static_cast<void *>(iVal);
+      }
       break;
     default:
       cerr << "Error parsing options" << endl;
       throw MtlParseException();
     }
+    cout << "Adding tuple ("<< get<0>(value).optName << ", " << get<1>(value) << ")" << endl;
+    values.push_back(value);
   }
 }
 
@@ -234,7 +250,7 @@ parseLine(vector<MtlMaterial *>& materials, const string& data)
         float floatData[3] = {0};
         int intData[3] = {0};
         string stringData;
-        vector<void *> optionsBuffer;
+        vector<tuple<const mtlOpt&, void *>> optionsBuffer;
 
         /* Parse by value type */
         switch (v.valType) {
